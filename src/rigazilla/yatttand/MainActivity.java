@@ -36,7 +36,7 @@ public class MainActivity extends BaseGameActivity implements
 
 	public MainActivity() {
 		super();
-		Debug.e("creating MainActivity: "+this);
+		Debug.e("creating MainActivity: " + this);
 
 	}
 
@@ -109,13 +109,13 @@ public class MainActivity extends BaseGameActivity implements
 		// Setting initial state
 		theRM.activateTouchMenu();
 		this.getEngine().setScene(theRM.menuScene);
-		theGM.conf=new HashMap<String, Object>();
+		theGM.conf = new HashMap<String, Object>();
 		mainLoop.setState(new StartGameState());
-		
+
 		theRM.gameScene.registerUpdateHandler(mainLoop);
 		theRM.menuScene.registerUpdateHandler(mainLoop);
 		theRM.gameScene.setTouchAreaBindingOnActionDownEnabled(true);
-
+		theRM.menuScene.setTouchAreaBindingOnActionMoveEnabled(true);
 	}
 
 	@Override
@@ -137,42 +137,65 @@ public class MainActivity extends BaseGameActivity implements
 	@Override
 	public void onClick(ButtonSprite pButtonSprite, float pTouchAreaLocalX,
 			float pTouchAreaLocalY) {
-		Debug.e("onClick: mengine is "+mEngine+" activity is "+this+"tag: "+(Integer) pButtonSprite.getTag());
+		Debug.e("onClick: mengine is " + mEngine + " activity is " + this
+				+ "tag: " + (Integer) pButtonSprite.getTag());
 		if ((Integer) pButtonSprite.getTag() == 32) {
 			Debug.e("putting replay");
-			theGM.conf.put("replay","yes");
+			theGM.conf.put("replay", "yes");
 		} else if ((Integer) pButtonSprite.getTag() < 10) {
 			onClickOnBoard(pButtonSprite);
 
 		} else {
-			this.mEngine.setScene(theRM.gameScene);
-			theGM.setGameOver(false);
-			theRM.buildBoard(this);
-			theGM.cleanup();
+//			this.mEngine.setScene(theRM.gameScene);
+//			theGM.setGameOver(false);
+//			theRM.buildBoard(this);
+//			theGM.cleanup();
 
-			HashSet<Player> tSet=new HashSet<Player>();
+			HashSet<Player> tSet = new HashSet<Player>();
+			Debug.e("cross: "+theRM.menuCrossSprite.state+"     circle: "+theRM.menuCircleSprite.state);
 			switch (pButtonSprite.getTag()) {
-			case 16: // human first
-				theGM.conf.put("turn", Player.CIRCLE);
-				tSet.add(Player.CROSS);
-				theGM.conf.put("ai",tSet);
+			case 16: // human pressed
+				if (theRM.menuCircleSprite.state == 1) {
+					theGM.conf.put("turn", Player.CIRCLE);
+				}
+				else
+				if (theRM.menuCrossSprite.state == 1) {
+					theGM.conf.put("turn", Player.CROSS);
+				}
+				else break;
+				if (theRM.menuCircleSprite.state < 1) {
+					tSet.add(Player.CIRCLE);
+				}
+				if (theRM.menuCrossSprite.state < 1) {
+					tSet.add(Player.CROSS);
+				}
+				theGM.conf.put("ai", tSet);
 				break;
 
-			case 17: // computer first
-				theGM.conf.put("turn", Player.CROSS);
-				tSet.add(Player.CROSS);
-				theGM.conf.put("ai",tSet);
+			case 17: // computer pressed
+				if (theRM.menuCircleSprite.state == -1) {
+					theGM.conf.put("turn", Player.CIRCLE);
+				}
+				else
+				if (theRM.menuCrossSprite.state == -1) {
+					theGM.conf.put("turn", Player.CROSS);
+				}
+				else break;
+				if (theRM.menuCircleSprite.state == -1) {
+					tSet.add(Player.CIRCLE);
+				}
+				if (theRM.menuCrossSprite.state == -1) {
+					tSet.add(Player.CROSS);
+				}
+				theGM.conf.put("ai", tSet);
 				break;
-
-			default: // humans go to war
-				theGM.conf.put("turn", Player.CROSS);
-				theGM.conf.put("ai",tSet);
+			default: 
 				break;
 			}
-//			if (theGM.isAi.get(theGM.currentTurn)) {
-//				theRM.aiWork = new FutureTask<Integer>(new BackgroundLife(this));
-//				executor.execute(theRM.aiWork);
-//			}
+			// if (theGM.isAi.get(theGM.currentTurn)) {
+			// theRM.aiWork = new FutureTask<Integer>(new BackgroundLife(this));
+			// executor.execute(theRM.aiWork);
+			// }
 
 		}
 	}
@@ -185,24 +208,26 @@ public class MainActivity extends BaseGameActivity implements
 		}
 		Integer userData = pButtonSprite.getTag();
 		theGM.conf.put("move", userData);
-//		theGM.clickOnCell(userData);
-//		theRM.placeSign(userData);
-//		Debug.e("Engine is: "+this.getEngine());
-//		this.runOnUpdateThread(new Runnable() {
-//			public void run() {
-//				theRM.gameScene.unregisterTouchArea(pButtonSprite);
-//				theRM.boardLayer.detachChild(pButtonSprite);
-//			}
-//		});
-//		GameManager.getInstance().goOn();
-//		theGM.checkForWin(this);
-//		if (theGM.isGameOver()) {
-//			return;
-//		}
-//		if (((Set<Player>)theGM.conf.get("ai")).contains(theGM.getCurrentTurn())) {
-//			theRM.aiWork = new FutureTask<Integer>(new BackgroundLife(this));
-//			executor.execute(theRM.aiWork);
-//		}
+		// theGM.clickOnCell(userData);
+		// theRM.placeSign(userData);
+		// Debug.e("Engine is: "+this.getEngine());
+		// this.runOnUpdateThread(new Runnable() {
+		// public void run() {
+		// theRM.gameScene.unregisterTouchArea(pButtonSprite);
+		// theRM.boardLayer.detachChild(pButtonSprite);
+		// }
+		// });
+		// GameManager.getInstance().goOn();
+		// theGM.checkForWin(this);
+		// if (theGM.isGameOver()) {
+		// return;
+		// }
+		// if
+		// (((Set<Player>)theGM.conf.get("ai")).contains(theGM.getCurrentTurn()))
+		// {
+		// theRM.aiWork = new FutureTask<Integer>(new BackgroundLife(this));
+		// executor.execute(theRM.aiWork);
+		// }
 	}
 
 	public void detachSprite(Sprite s) {

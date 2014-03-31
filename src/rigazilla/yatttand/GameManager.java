@@ -6,6 +6,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.andengine.entity.modifier.RotationAtModifier;
 import org.andengine.entity.primitive.Line;
 import org.andengine.util.color.Color;
 
@@ -108,7 +109,7 @@ public class GameManager {
 
 	public void cleanup() {
 //		initBoard();
-		conf.put("turn", Player.CIRCLE);
+//		conf.put("turn", Player.CIRCLE);
 
 	}
 
@@ -216,23 +217,21 @@ public class GameManager {
 			}
 			int whereWon = (Integer) winInfo[1];
 			if (whoWin == Player.CIRCLE) {
-				mainActivity.theRM.wLine = new Line(ResourceManager.winnerLine[whereWon][0],
-						ResourceManager.winnerLine[whereWon][1],
-						ResourceManager.winnerLine[whereWon][2],
-						ResourceManager.winnerLine[whereWon][3], 16,
-						mainActivity.getEngine().getVertexBufferObjectManager());
-				mainActivity.theRM.wLine.setColor(Color.RED);
-				mainActivity.theRM.boardLayer.attachChild(mainActivity.theRM.wLine);
+				for (int i=0; i< 3; i++)
+				{
+					for (int pos: (Set<Integer>)winning[whereWon])
+					{
+						ResourceManager.winAnimation(pos);
+						
+					}
+				}
 			}
 			if (whoWin == Player.CROSS) {
-				mainActivity.theRM.wLine = new Line(ResourceManager.winnerLine[whereWon][0],
-						ResourceManager.winnerLine[whereWon][1],
-						ResourceManager.winnerLine[whereWon][2],
-						ResourceManager.winnerLine[whereWon][3], 16,
-						mainActivity.getEngine().getVertexBufferObjectManager());
-				mainActivity.theRM.wLine.setColor(Color.RED);
-				mainActivity.theRM.boardLayer.attachChild(mainActivity.theRM.wLine);
-	
+				for (int pos: (Set<Integer>)winning[whereWon])
+				{
+					ResourceManager.winAnimation(pos);
+					
+				}	
 			}
 			setGameOver(true);
 		}

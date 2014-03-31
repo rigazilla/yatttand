@@ -4,11 +4,18 @@ import java.util.EnumMap;
 import java.util.concurrent.FutureTask;
 
 import org.andengine.entity.Entity;
+import org.andengine.entity.modifier.EntityModifier;
+import org.andengine.entity.modifier.ParallelEntityModifier;
+import org.andengine.entity.modifier.RotationAtModifier;
+import org.andengine.entity.modifier.ScaleAtModifier;
+import org.andengine.entity.modifier.SequenceEntityModifier;
 import org.andengine.entity.primitive.Line;
 import org.andengine.entity.scene.ITouchArea;
 import org.andengine.entity.scene.Scene;
+import org.andengine.entity.sprite.AnimatedSprite;
 import org.andengine.entity.sprite.ButtonSprite;
 import org.andengine.entity.sprite.Sprite;
+import org.andengine.input.touch.TouchEvent;
 import org.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlas;
 import org.andengine.opengl.texture.atlas.bitmap.BitmapTextureAtlasTextureRegionFactory;
 import org.andengine.opengl.texture.atlas.bitmap.BuildableBitmapTextureAtlas;
@@ -18,12 +25,73 @@ import org.andengine.opengl.texture.atlas.buildable.builder.ITextureAtlasBuilder
 import org.andengine.opengl.texture.region.ITextureRegion;
 import org.andengine.opengl.texture.region.TextureRegion;
 import org.andengine.opengl.texture.region.TiledTextureRegion;
+import org.andengine.opengl.vbo.VertexBufferObjectManager;
 import org.andengine.util.debug.Debug;
 
-import android.provider.ContactsContract.PhoneLookup;
 import rigazilla.yatttand.GameManager.Player;
 
 public class ResourceManager {
+	public final class MenuSprite extends ButtonSprite {
+		private Integer thresholdLeft, thresholdRight, placeLeft, placeRight;
+		public int state = 0;
+
+		private MenuSprite(float pX, float pY,
+				ITextureRegion pNormalTextureRegion,
+				VertexBufferObjectManager pVertexBufferObjectManager,
+				OnClickListener pOnClickListener) {
+			super(pX, pY, pNormalTextureRegion, pVertexBufferObjectManager,
+					pOnClickListener);
+		}
+
+		public void configure(int tl, int tr, int pl, int pr) {
+			thresholdLeft = tl;
+			thresholdRight = tr;
+			placeLeft = pl;
+			placeRight = pr;
+		}
+
+		@Override
+		public boolean onAreaTouched(TouchEvent pSceneTouchEvent,
+				float pTouchAreaLocalX, float pTouchAreaLocalY) {
+			this.setPosition(pSceneTouchEvent.getX(), this.getY());
+
+			// Detects if player is outside of bounds
+			final float width = this.getWidth();
+			final float height = this.getHeight();
+			float x = pSceneTouchEvent.getX() - width / 2;
+			float y = pSceneTouchEvent.getY() - height / 2;
+
+			if (x < 0)
+				x = 0;
+			if (y < 0)
+				y = 0;
+
+			if (x > (MainActivity.WIDTH - width))
+				x = MainActivity.WIDTH - width;
+			if (y > (MainActivity.HEIGHT - height))
+				y = (MainActivity.HEIGHT - height);
+
+			this.setPosition(x, this.getY());
+
+			if (pSceneTouchEvent.isActionDown()) {
+			}
+			if (pSceneTouchEvent.isActionUp()) {
+				if (pSceneTouchEvent.getX() < thresholdLeft) {
+					this.setPosition(placeLeft, this.getY());
+					state = -1;
+				} else
+				if (pSceneTouchEvent.getX() > thresholdRight) {
+					this.setPosition(placeRight, this.getY());
+					state = 1;
+				}
+				else state=0;
+			}
+
+			return true;
+
+		}
+	}
+
 	private static ResourceManager theInstance;
 	public ITextureRegion mCrossTextureRegion;
 	public ITextureRegion mCircleTextureRegion;
@@ -31,32 +99,27 @@ public class ResourceManager {
 	public ITextureRegion mVBarTextureRegion;
 	public ITextureRegion mThinkingTextureRegion;
 	public ITextureRegion mReplayTextureRegion;
+	public ITextureRegion mDroidTextureRegion;
+	public ITextureRegion mHumanTextureRegion;
+
 	public TextureRegion mInvisibleButtonTextureRegion;
-	public TiledTextureRegion mMenuButton01TextureRegion;
-	public TiledTextureRegion mMenuButton02TextureRegion;
-	public TiledTextureRegion mMenuButton03TextureRegion;
 	public Entity menuLayer;
 	public Entity boardLayer;
 	public static final int[][] positions = { { 180, 20 }, { 340, 20 },
 			{ 500, 20 }, { 180, 180 }, { 340, 180 }, { 500, 180 },
 			{ 180, 340 }, { 340, 340 }, { 500, 340 } };
-	public static final float[][] winnerLine = { { 250, 80, 570, 80 },
-			{ 250, 240, 570, 240 }, { 250, 400, 570, 400 },
-			{ 250, 80, 250, 400 }, { 410, 80, 410, 400 },
-			{ 570, 80, 570, 400 }, { 250, 80, 570, 400 }, { 578, 80, 250, 400 } };
-	private ButtonSprite buttonSprite01;
-	private ButtonSprite buttonSprite02;
-	private ButtonSprite buttonSprite03;
 	// Declare a Scene object for our activity
 	Scene gameScene;
 	Scene menuScene;
 	public Line wLine;
-	public EnumMap<Player, Sprite[]> spriteBox = new EnumMap<GameManager.Player, Sprite[]>(
+	static public EnumMap<Player, Sprite[]> spriteBox = new EnumMap<GameManager.Player, Sprite[]>(
 			GameManager.Player.class);
 	public EnumMap<Player, ITextureRegion> textureBox = new EnumMap<GameManager.Player, ITextureRegion>(
 			GameManager.Player.class);
 	private Sprite thinking;
 	public ButtonSprite replay;
+	private ButtonSprite droidSprite, humanSprite;
+	public MenuSprite menuCircleSprite, menuCrossSprite;
 	public FutureTask<Integer> aiWork;
 	public MainActivity mainActivity;
 
@@ -78,7 +141,6 @@ public class ResourceManager {
 	}
 
 	void loadTexture(MainActivity mainActivity) {
-		// TODO Auto-generated method stub
 		BitmapTextureAtlasTextureRegionFactory.setAssetBasePath("gfx/");
 		// Create the texture atlas at a size of 120x120 pixels
 		BuildableBitmapTextureAtlas mBoardTextureAtlas = new BuildableBitmapTextureAtlas(
@@ -117,16 +179,11 @@ public class ResourceManager {
 		mBoardTextureAtlas.load();
 
 		BuildableBitmapTextureAtlas mMenuTextureAtlas = new BuildableBitmapTextureAtlas(
-				mainActivity.getEngine().getTextureManager(), 1204, 512);
-		mMenuButton01TextureRegion = BitmapTextureAtlasTextureRegionFactory
-				.createTiledFromAsset(mMenuTextureAtlas, mainActivity,
-						"button01.png", 2, 1);
-		mMenuButton02TextureRegion = BitmapTextureAtlasTextureRegionFactory
-				.createTiledFromAsset(mMenuTextureAtlas, mainActivity,
-						"button02.png", 2, 1);
-		mMenuButton03TextureRegion = BitmapTextureAtlasTextureRegionFactory
-				.createTiledFromAsset(mMenuTextureAtlas, mainActivity,
-						"button03.png", 2, 1);
+				mainActivity.getEngine().getTextureManager(), 2048, 512);
+		mHumanTextureRegion = BitmapTextureAtlasTextureRegionFactory
+				.createFromAsset(mMenuTextureAtlas, mainActivity, "human.png");
+		mDroidTextureRegion = BitmapTextureAtlasTextureRegionFactory
+				.createFromAsset(mMenuTextureAtlas, mainActivity, "droid.png");
 		try {
 			mMenuTextureAtlas
 					.build(new BlackPawnTextureAtlasBuilder<IBitmapTextureAtlasSource, BitmapTextureAtlas>(
@@ -234,13 +291,13 @@ public class ResourceManager {
 									ResourceManager.theInstance.mainActivity, j);
 						}
 					});
-				} 
-//				else {
-//					placeButtonOnBoard(
-//							ResourceManager.theInstance.mainActivity, j);
-//					activateButtonOnBoard(
-//							ResourceManager.theInstance.mainActivity, j);
-//				}
+				}
+				// else {
+				// placeButtonOnBoard(
+				// ResourceManager.theInstance.mainActivity, j);
+				// activateButtonOnBoard(
+				// ResourceManager.theInstance.mainActivity, j);
+				// }
 			}
 		}
 	}
@@ -286,38 +343,57 @@ public class ResourceManager {
 
 	void buildMenu(MainActivity mainActivity) {
 		menuScene.attachChild(menuLayer);
-		buttonSprite01 = new ButtonSprite(MainActivity.WIDTH * 0.5f - 128,
-				MainActivity.HEIGHT * 0.5f - 132, mMenuButton01TextureRegion,
+		droidSprite = new ButtonSprite(MainActivity.WIDTH * 0.25f - 100,
+				MainActivity.HEIGHT * 0.5f - 120, mDroidTextureRegion,
 				mainActivity.getEngine().getVertexBufferObjectManager(),
 				mainActivity);
-		buttonSprite01.setTag(16);
-		menuLayer.attachChild(buttonSprite01);
+		droidSprite.setTag(17);
+		
 
-		buttonSprite02 = new ButtonSprite(MainActivity.WIDTH * 0.5f - 128,
-				MainActivity.HEIGHT * 0.5f - 32, mMenuButton02TextureRegion,
+		humanSprite = new ButtonSprite(MainActivity.WIDTH * 0.75f - 100,
+				MainActivity.HEIGHT * 0.5f - 120, mHumanTextureRegion,
 				mainActivity.getEngine().getVertexBufferObjectManager(),
 				mainActivity);
-		buttonSprite02.setTag(17);
-		menuLayer.attachChild(buttonSprite02);
+		humanSprite.setTag(16);
+		
+		menuCircleSprite = new MenuSprite(MainActivity.WIDTH * 0.5f - 64,
+				MainActivity.HEIGHT * 0.20f - 64,
+				textureBox.get(Player.CIRCLE), mainActivity.getEngine()
+						.getVertexBufferObjectManager(), mainActivity);
+		menuCircleSprite.configure(MainActivity.WIDTH / 4 + 100,
+				MainActivity.WIDTH * 3 / 4 - 100, MainActivity.WIDTH / 4 - 64,
+				MainActivity.WIDTH * 3 / 4 - 64);
 
-		buttonSprite03 = new ButtonSprite(MainActivity.WIDTH * 0.5f - 128,
-				MainActivity.HEIGHT * 0.5f + 68, mMenuButton03TextureRegion,
+		menuCrossSprite = new MenuSprite(MainActivity.WIDTH * 0.5f - 64,
+				MainActivity.HEIGHT * 0.80f - 64, textureBox.get(Player.CROSS),
 				mainActivity.getEngine().getVertexBufferObjectManager(),
 				mainActivity);
-		buttonSprite03.setTag(18);
-		menuLayer.attachChild(buttonSprite03);
+		menuCrossSprite.configure(MainActivity.WIDTH / 4 + 100,
+				MainActivity.WIDTH * 3 / 4 - 100, MainActivity.WIDTH / 4 - 64,
+				MainActivity.WIDTH * 3 / 4 - 64);
+
+		
+		menuLayer.attachChild(droidSprite);
+		menuLayer.attachChild(humanSprite);
+		menuLayer.attachChild(menuCircleSprite);
+		menuLayer.attachChild(menuCrossSprite);
+		menuScene.registerTouchArea(menuCircleSprite);
+		menuScene.registerTouchArea(menuCrossSprite);
+		menuScene.registerTouchArea(droidSprite);
+		menuScene.registerTouchArea(humanSprite);
 	}
 
+
 	public void activateTouchMenu() {
-		menuScene.registerTouchArea(buttonSprite01);
-		menuScene.registerTouchArea(buttonSprite02);
-		menuScene.registerTouchArea(buttonSprite03);
+		// menuScene.registerTouchArea(buttonSprite01);
+		// menuScene.registerTouchArea(buttonSprite02);
+		// menuScene.registerTouchArea(buttonSprite03);
 	}
 
 	public void deactivateTouchMenu() {
-		menuScene.unregisterTouchArea(buttonSprite01);
-		menuScene.unregisterTouchArea(buttonSprite02);
-		menuScene.unregisterTouchArea(buttonSprite03);
+		// menuScene.unregisterTouchArea(buttonSprite01);
+		// menuScene.unregisterTouchArea(buttonSprite02);
+		// menuScene.unregisterTouchArea(buttonSprite03);
 	}
 
 	public void place(int pos, Player p) {
@@ -406,7 +482,25 @@ public class ResourceManager {
 
 	public void showReplayButton() {
 		replay.setAlpha(1);
-		
+
 	}
+	public static void winAnimation(int pos) {
+		Player player = GameManager.board[pos];
+		switch (player)
+		{
+		case CIRCLE:
+			SequenceEntityModifier tsem = new SequenceEntityModifier(new ScaleAtModifier(2.5f, 1, 0, 64, 64),
+			new ScaleAtModifier(2.5f, 0, 1, 64, 64));
+			spriteBox.get(player)[pos].registerEntityModifier(tsem);
+			break;
+		case CROSS:
+			RotationAtModifier tram = new RotationAtModifier(5, 0, 720, 64, 64);
+			spriteBox.get(player)[pos].registerEntityModifier(tram);
+			break;
+		default:
+			break;		
+		}
+		
+				}
 
 }
